@@ -22,7 +22,7 @@ dp = Dispatcher()
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
-        "Salom! Botni o'z guruhingizga qo'shing. Bot har bir guruh uchun statistikani avtomatik yuritadi va sizga hisobot yuboradi."
+        "Salom! Botni o'z guruhingizga qo'shing va har kuni guruhingiz haqida kunlik hisobot oling."
     )
 
 @dp.my_chat_member()
