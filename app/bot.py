@@ -1,5 +1,4 @@
-from aiogram import Bot, Dispatcher, F, types
-from aiogram.filters.chat_member_updated import ChatMemberUpdated
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram.types import ChatMemberUpdated as ChatMemberUpdatedType
 from dotenv import load_dotenv
@@ -23,10 +22,27 @@ dp = Dispatcher()
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
-        "Salom! Botni o'z guruhingizga admin sifatida qo'shing va guruhingiz kunlik statistikasi haqida ma'lumot olishni boshlang. "
+        "Salom! Botni o'z guruhingizga qo'shing. Bot har bir guruh uchun statistikani avtomatik yuritadi va sizga hisobot yuboradi."
     )
 
-@dp.chat_member(ChatMemberUpdated())
+@dp.my_chat_member()
+async def on_my_chat_member(event: ChatMemberUpdatedType):
+    if event.new_chat_member.status in ("member", "administrator"):
+        group_id = event.chat.id
+        group_name = event.chat.title
+        inviter = event.from_user
+        owner_id = inviter.id
+        owner_name = inviter.full_name
+
+        async with AsyncSessionLocal() as session:
+            await add_or_update_group(session, group_id, owner_id, group_name, owner_name)
+        await bot.send_message(
+            owner_id,
+            f"Bot {group_name} guruhiga muvaffaqiyatli qo'shildi!\n"
+            "Statistika yig'ish boshlandi. Siz har kuni guruh statistikasi haqida hisobot olasiz."
+        )
+
+@dp.chat_member()
 async def on_chat_member(event: ChatMemberUpdatedType):
     if event.chat.type not in ("group", "supergroup"):
         return
@@ -39,33 +55,8 @@ async def on_chat_member(event: ChatMemberUpdatedType):
 
     async with AsyncSessionLocal() as session:
         group = await session.scalar(select(Group).where(Group.group_id == group_id))
-        is_owner = group and group.owner_id == user_id
-
-        if event.new_chat_member.status in ["administrator", "creator"]:
-            group_name = event.chat.title
-            owner_name = event.from_user.full_name
-
-            if not group:
-                await add_or_update_group(session, group_id, user_id, group_name, owner_name)
-                await bot.send_message(
-                    user_id,
-                    f"Bot {group_name} guruhiga muvaffaqiyatli qo'shildi va monitoring boshlandi!"
-                )
-            elif is_owner:
-                await bot.send_message(
-                    user_id,
-                    f"Bot {group_name} guruhida monitoring davom etmoqda."
-                )
-            else:
-                await bot.send_message(
-                    user_id,
-                    "Bot faqat guruh egasi uchun statistikani yuritadi.\n"
-                    "Siz faqat o'zingiz egasi bo'lgan guruhlar uchun statistikani olishingiz mumkin."
-                )
-            return
-
-        if not is_owner:
-            return
+        if not group or group.owner_id != user_id:
+            return 
 
         # JOIN
         if event.new_chat_member.status in ("member", "administrator"):

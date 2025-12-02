@@ -1,18 +1,16 @@
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 from sqlalchemy.future import select
-from app.models import Group
+from app.models import Group, Base
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-Base = declarative_base()
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 async def init_db():
